@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Donor Count Time Series Comparison</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      margin: 0;
+    }
+    .chart-container {
+      position: relative;
+      width: 800px;
+      height: 500px;
+    }
+    .dropdown-container {
+      position: absolute;
+      bottom: -140px;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .dropdown-group {
+      margin-bottom: 10px;
+    }
+    .label {
+      font-weight: bold;
+      margin-right: 5px;
+    }
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      width: auto;
+      padding: 5px;
+      background: lightsteelblue;
+      border: 0px;
+      border-radius: 5px;
+      pointer-events: none;
+      font-size: 12px;
+      color: black;
+      transform: translate(-50%, -120%);
+    }
+    .legend {
+      font-size: 12px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Donor Count Over Time (Deeda vs GivingSG)</h2>
+  
+  <div class="chart-container">
+    <svg width="800" height="500"></svg>
+    <div class="tooltip" style="opacity: 0;"></div>
+
+    <!-- Filters positioned at the bottom left -->
+    <div class="dropdown-container">
+      <label class="label" for="charityDropdown">Select Charity:</label>
+      <select id="charityDropdown" class="dropdown"></select><br>
+
+      <label class="label" for="campaignDropdown">Select Campaign:</label>
+      <select id="campaignDropdown" class="dropdown"></select><br>
+      
+      <!-- Date Filters -->
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10%;">
+    <label for="startDate" style="font-weight: bold;">Start Date:</label>
+    <input type="date" id="startDate" class="dropdown">
+    <label for="endDate" style="font-weight: bold;">End Date:</label>
+    <input type="date" id="endDate" class="dropdown">
+    </div>
+  </div>
+
+  <script>
+    async function loadData() {
+      const [deedaData, givingSGData] = await Promise.all([
+        d3.json("donor_count_deeda.json"),
+        d3.json("donor_count_givingsg.json")
+      ]);
+
+      const allData = {
+        deeda: deedaData.map(d => ({
+          date: new Date(d.donateDay),
+          count: d.donationCount,
+          charity_name: d.charity_name,
+          campaign_name: d.campaign_name
+        })),
+        givingSG: givingSGData.map(d => ({
+          date: new Date(d.donateDay),
+          count: d.donationCount,
+          charity_name: d.charity_name,
+          campaign_name: d.campaign_name
+        }))
+      };
+
+      // Sort datasets by date
+      allData.deeda.sort((a, b) => a.date - b.date);
+      allData.givingSG.sort((a, b) => a.date - b.date);
+
+      const margin = { top: 40, right: 20, bottom: 60, left: 80 };
+      const width = 800 - margin.left - margin.right;
+      const height = 500 - margin.top - margin.bottom;
+
+      const svg = d3.select("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const x = d3.scaleTime().range([0, width]);
+      const y = d3.scaleLinear().range([height, 0]);
+
+      const xAxis = d3.axisBottom(x).tickFormat(d3.timeFormat("%b/%Y"));
+      const yAxis = d3.axisLeft(y);
+
+      let gX = svg.append("g").attr("transform", `translate(0,${height})`);
+      let gY = svg.append("g");
+
+      const tooltip = d3.select(".tooltip");
+
+      // Define line generators
+      const lineGeneratorDeeda = d3.line()
+        .x(d => x(d.date))
+        .y(d => y(d.count));
+
+      const lineGeneratorGivingSG = d3.line()
+        .x(d => x(d.date))
+        .y(d => y(d.count));
+
+      function render(filteredDeedaData, filteredGivingSGData) {
+        svg.selectAll(".trend-line").remove();
+        svg.selectAll("circle").remove();
+
+        const combinedData = [...filteredDeedaData, ...filteredGivingSGData];
+        x.domain(d3.extent(combinedData, d => d.date));
+        y.domain([0, d3.max(combinedData, d => d.count)]);
+
+        gX.call(xAxis);
+        gY.call(yAxis);
+
+        // Draw Deeda line and points
+        svg.append("path")
+          .datum(filteredDeedaData)
+          .attr("class", "trend-line")
+          .attr("fill", "none")
+          .attr("stroke", "steelblue")
+          .attr("stroke-width", 2)
+          .attr("d", lineGeneratorDeeda);
+
+        svg.selectAll(".deeda-circle")
+          .data(filteredDeedaData)
+          .enter().append("circle")
+          .attr("class", "deeda-circle")
+          .attr("cx", d => x(d.date))
+          .attr("cy", d => y(d.count))
+          .attr("r", 5)
+          .attr("fill", "steelblue")
+          .on("mouseover", function(event, d) {
+            tooltip.transition().duration(200).style("opacity", 0.9);
+            tooltip.html(`
+              <strong>Deeda Donation</strong><br/>
+              <strong>Charity:</strong> ${d.charity_name}<br/>
+              <strong>Campaign:</strong> ${d.campaign_name}<br/>
+              <strong>Donor Count:</strong> ${d.count}<br/>
+              <strong>Date:</strong> ${d3.timeFormat("%d/%b/%Y")(d.date)}
+            `)
+            .style("left", `${d3.select(this).attr("cx")}px`)
+            .style("top", `${d3.select(this).attr("cy") - 10}px`);
+          })
+          .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0));
+
+        // Draw GivingSG line and points
+        svg.append("path")
+          .datum(filteredGivingSGData)
+          .attr("class", "trend-line")
+          .attr("fill", "none")
+          .attr("stroke", "orange")
+          .attr("stroke-width", 2)
+          .attr("d", lineGeneratorGivingSG);
+
+        svg.selectAll(".givingSG-circle")
+          .data(filteredGivingSGData)
+          .enter().append("circle")
+          .attr("class", "givingSG-circle")
+          .attr("cx", d => x(d.date))
+          .attr("cy", d => y(d.count))
+          .attr("r", 5)
+          .attr("fill", "orange")
+          .on("mouseover", function(event, d) {
+            tooltip.transition().duration(200).style("opacity", 0.9);
+            tooltip.html(`
+              <strong>GivingSG Donation</strong><br/>
+              <strong>Charity:</strong> ${d.charity_name}<br/>
+              <strong>Campaign:</strong> ${d.campaign_name}<br/>
+              <strong>Donor Count:</strong> ${d.count}<br/>
+              <strong>Date:</strong> ${d3.timeFormat("%d/%b/%Y")(d.date)}
+            `)
+            .style("left", `${d3.select(this).attr("cx")}px`)
+            .style("top", `${d3.select(this).attr("cy") - 10}px`);
+          })
+          .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0));
+      }
+
+      const allCharities = Array.from(new Set(
+        allData.deeda.map(d => d.charity_name).concat(allData.givingSG.map(d => d.charity_name))
+      ));
+      d3.select("#charityDropdown").selectAll("option")
+        .data(["All", ...allCharities])
+        .enter().append("option")
+        .text(d => d);
+
+      d3.select("#charityDropdown").on("change", function() {
+        const selectedCharity = this.value;
+        const campaigns = selectedCharity === "All" ? [] :
+          Array.from(new Set(allData.deeda.concat(allData.givingSG)
+            .filter(d => d.charity_name === selectedCharity)
+            .map(d => d.campaign_name)
+          ));
+
+        d3.select("#campaignDropdown").selectAll("option")
+          .data(["All", ...campaigns])
+          .join("option")
+          .text(d => d);
+
+        filterData();
+      });
+
+      d3.select("#campaignDropdown").on("change", filterData);
+      d3.select("#startDate").on("change", filterData);
+      d3.select("#endDate").on("change", filterData);
+
+      function filterData() {
+        const selectedCharity = d3.select("#charityDropdown").property("value");
+        const selectedCampaign = d3.select("#campaignDropdown").property("value");
+        let filteredDeedaData = allData.deeda;
+        let filteredGivingSGData = allData.givingSG;
+
+        if (selectedCharity !== "All") {
+          filteredDeedaData = filteredDeedaData.filter(d => d.charity_name === selectedCharity);
+          filteredGivingSGData = filteredGivingSGData.filter(d => d.charity_name === selectedCharity);
+        }
+        if (selectedCampaign !== "All") {
+          filteredDeedaData = filteredDeedaData.filter(d => d.campaign_name === selectedCampaign);
+          filteredGivingSGData = filteredGivingSGData.filter(d => d.campaign_name === selectedCampaign);
+        }
+
+        const startDate = new Date(d3.select("#startDate").property("value"));
+        const endDate = new Date(d3.select("#endDate").property("value"));
+
+        if (!isNaN(startDate)) {
+          filteredDeedaData = filteredDeedaData.filter(d => d.date >= startDate);
+          filteredGivingSGData = filteredGivingSGData.filter(d => d.date >= startDate);
+        }
+        if (!isNaN(endDate)) {
+          filteredDeedaData = filteredDeedaData.filter(d => d.date <= endDate);
+          filteredGivingSGData = filteredGivingSGData.filter(d => d.date <= endDate);
+        }
+
+        render(filteredDeedaData, filteredGivingSGData);
+      }
+
+      render(allData.deeda, allData.givingSG);
+    }
+
+    loadData().catch(error => console.log("Error loading data: ", error));
+  </script>
+</body>
+</html>
