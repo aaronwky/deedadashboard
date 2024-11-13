@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Dashboard</title>
+    <!-- Bootstrap CSS from CDN -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.6.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* Essential Styles for Navbar and Sidebar */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #343a40;
+            color: #fff;
+        }
+        .navbar-brand {
+            color: #fff;
+            padding: 1rem;
+            font-size: 1.25rem;
+        }
+        .navbar-brand:hover {
+            color: #ddd;
+        }
+        .sidebar {
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            background-color: #343a40;
+            padding-top: 20px;
+        }
+        .sidebar .nav-link {
+            color: #ddd;
+            padding: 10px;
+            text-decoration: none;
+            display: block;
+        }
+        /* Styling for active link */
+        .sidebar .nav-link.active {
+            background-color: #495057;
+            color: #fff;
+        }
+
+        /* Styling for hover */
+        .sidebar .nav-link:hover {
+            background-color: #3a3f44;
+            color: #fff;
+        }
+        .content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <a href="#" class="nav-link" onclick="loadContent('1.totaldonations(new).html', this)">Total Donations</a>
+        <a href="#" class="nav-link" onclick="loadContent('2.donorcount(new).html', this)">Donor Count</a>
+        <a href="#" class="nav-link" onclick="loadContent('3.tableau.html', this)">Tableau</a>
+        <a href="#" class="nav-link" onclick="loadContent('4.causes_graph(new).html', this)">Causes Graph</a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content">
+        <h1 class="h2">Dashboard</h1>
+        <div id="main-content">
+            <!-- Default or dynamic content will load here -->
+        </div>
+    </div>
+
+    <!-- JavaScript to Load Pages Dynamically -->
+    <script>
+        function loadContent(page, linkElement) {
+            fetch(page)
+                .then(response => {
+                    if (!response.ok) throw new Error("Network response was not ok " + response.statusText);
+                    return response.text();
+                })
+                .then(html => {
+                    const contentDiv = document.getElementById('main-content');
+                    contentDiv.innerHTML = html;
+
+                    // Re-evaluate scripts in loaded content
+                    contentDiv.querySelectorAll("script").forEach(oldScript => {
+                        const newScript = document.createElement("script");
+                        newScript.textContent = oldScript.textContent;
+                        document.body.appendChild(newScript);
+                        document.body.removeChild(newScript);
+                    });
+
+                    // Update active link styling
+                    document.querySelectorAll('.sidebar .nav-link').forEach(link => link.classList.remove('active'));
+                    linkElement.classList.add('active');
+                })
+                .catch(err => console.error('Error loading content:', err));
+        };
+
+        window.onload = function() {
+            const firstLink = document.querySelector('.sidebar .nav-link');
+            loadContent('1.totaldonations(new).html', firstLink);
+            firstLink.classList.add('active');
+        };
+
+    </script>
+</body>
+</html>
