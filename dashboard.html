@@ -8,71 +8,51 @@
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.6.0/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        /* Essential Styles for Navbar and Sidebar */
+        /* Essential Styles for Navbar and Content */
         body {
             font-family: Arial, sans-serif;
             background-color: #f8f9fa;
+            margin: 0;
         }
+        /* Full-width Navbar */
         .navbar {
             background-color: #343a40;
-            color: #fff;
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
         }
-        .navbar-brand {
-            color: #fff;
+        .navbar-brand, .nav-link {
+            color: #fff !important;
+            text-align: center;
+            flex-grow: 1;
             padding: 1rem;
-            font-size: 1.25rem;
         }
-        .navbar-brand:hover {
-            color: #ddd;
-        }
-        .sidebar {
-            width: 250px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            background-color: #343a40;
-            padding-top: 20px;
-        }
-        .sidebar .nav-link {
-            color: #ddd;
-            padding: 10px;
-            text-decoration: none;
-            display: block;
-        }
-        /* Styling for active link */
-        .sidebar .nav-link.active {
+        .nav-link.active {
             background-color: #495057;
-            color: #fff;
+            border-radius: 5px;
         }
-
-        /* Styling for hover */
-        .sidebar .nav-link:hover {
-            background-color: #3a3f44;
-            color: #fff;
-        }
-        .content {
-            margin-left: 250px;
-            padding: 20px;
+        /* Content styling */
+        .content.styled {
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            margin-top:20px;
         }
     </style>
 </head>
 <body>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
+    <!-- Full-width Navbar -->
+    <nav class="navbar">
         <a href="#" class="nav-link" onclick="loadContent('1.totaldonations(new).html', this)">Total Donations</a>
         <a href="#" class="nav-link" onclick="loadContent('2.donorcount(new).html', this)">Donor Count</a>
         <a href="#" class="nav-link" onclick="loadContent('4.causes_graph(new).html', this)">Donations by Causes</a>
         <a href="#" class="nav-link" onclick="loadContent('3.tableau.html', this)">Charity Backend Dashboard</a>
-    </div>
+    </nav>
 
     <!-- Main Content -->
-    <div class="content">
-        <h1 class="h2">Dashboard</h1>
-        <div id="main-content">
-            <!-- Default or dynamic content will load here -->
-        </div>
+    <div class="content styled" id="main-content">
+        <!-- Default or dynamic content will load here -->
     </div>
 
     <!-- JavaScript to Load Pages Dynamically -->
@@ -96,18 +76,26 @@
                     });
 
                     // Update active link styling
-                    document.querySelectorAll('.sidebar .nav-link').forEach(link => link.classList.remove('active'));
+                    document.querySelectorAll('.navbar .nav-link').forEach(link => link.classList.remove('active'));
                     linkElement.classList.add('active');
+
+                    // Apply or remove content styling based on the page
+                    if (page === '3.tableau.html') {
+                        contentDiv.classList.remove('styled');
+                        contentDiv.style.maxHeight = "95vh";
+                    } else {
+                        contentDiv.classList.add('styled');
+                        contentDiv.style.maxHeight = ""; // Remove max-height for other pages
+                    }
                 })
                 .catch(err => console.error('Error loading content:', err));
         };
 
         window.onload = function() {
-            const firstLink = document.querySelector('.sidebar .nav-link');
+            const firstLink = document.querySelector('.navbar .nav-link');
             loadContent('1.totaldonations(new).html', firstLink);
             firstLink.classList.add('active');
         };
-
     </script>
 </body>
 </html>
